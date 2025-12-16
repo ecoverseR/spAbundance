@@ -4,7 +4,7 @@ svcAbundGaussian <- function(formula, data, inits, priors, tuning,
                              batch.length, accept.rate = 0.43, family = 'Gaussian',
                              n.omp.threads = 1, verbose = TRUE, n.report = 100,
                              n.burn = round(.10 * n.batch * batch.length),
-                             n.thin = 1, n.chains = 1, post.hoc = FALSE, ...) {
+                             n.thin = 1, n.chains = 1, ...) {
 
   ptm <- proc.time()
 
@@ -48,18 +48,12 @@ svcAbundGaussian <- function(formula, data, inits, priors, tuning,
   if (!'y' %in% names(data)) {
     stop("error: detection-nondetection data y must be specified in data")
   }
-  if (length(dim(y)) == 2) {
-    y <- as.matrix(data$y)
-  } else {
-    y <- data$y
-  }
+  y <- as.matrix(data$y)
   if (!'covs' %in% names(data)) {
     if (formula == ~ 1) {
       if (verbose) {
         message("abundance covariates (covs) not specified in data.\nAssuming intercept only abundance model.\n")
       }
-      # TODO: left off updating here. Need to adjust how things are done with y 
-      #       throughout, as now the dimensions of y differ depending on if post.hoc = TRUE
       data$covs <- list(int = array(1, dim = dim(y)))
     } else {
       stop("error: covs must be specified in data for an abundance model with covariates")
@@ -91,9 +85,6 @@ svcAbundGaussian <- function(formula, data, inits, priors, tuning,
     two.stage <- FALSE
   }
   if (two.stage) {
-    if (post.hoc) {
-      stop('post.hoc = TRUE is not supported for family = "zi-Gaussian"')
-    }
     if (!'z' %in% names(data)) {
       stop("error: z must be specified in data for a two stage model")
     }

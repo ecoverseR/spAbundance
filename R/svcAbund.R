@@ -4,7 +4,7 @@ svcAbund <- function(formula, data, inits, priors, tuning, svc.cols = 1,
                      n.batch, batch.length, accept.rate = 0.43, family = 'Poisson',
                      n.omp.threads = 1, verbose = TRUE,
                      n.report = 100, n.burn = round(.10 * n.batch * batch.length), 
-                     n.thin = 1, n.chains = 1, save.fitted = TRUE, post.hoc = FALSE, ...){
+                     n.thin = 1, n.chains = 1, save.fitted = TRUE, ...){
 
   ptm <- proc.time()
 
@@ -15,7 +15,7 @@ svcAbund <- function(formula, data, inits, priors, tuning, svc.cols = 1,
     svcAbundGaussian(formula, data, inits, priors, tuning, svc.cols, cov.model, NNGP,
                      n.neighbors, search.type, n.batch, batch.length, accept.rate,
                      family, n.omp.threads, verbose, n.report, n.burn, n.thin,
-                     n.chains, post.hoc)
+                     n.chains)
   } else {
 
     # Make it look nice
@@ -124,10 +124,6 @@ svcAbund <- function(formula, data, inits, priors, tuning, svc.cols = 1,
 
     if (family == 'NB' & verbose) {
       message('**NOTE**: spatial negative binomial models can be difficult to\nestimate as they contain two forms of overdispersion. If experiencing\nvery poor mixing/convergence of MCMC chains (particularly kappa and phi),\nconsider using a spatial Poisson model or more informative\npriors on kappa or phi.\n')
-    }
-
-    if (post.hoc) {
-      stop("post.hoc = TRUE is not supported for family = 'NB' or family = 'Poisson'")
     }
 
     # Neighbors and Ordering ----------------------------------------------
