@@ -560,8 +560,9 @@ predict.spAbund <- function(object, X.0, coords.0,
 
       n.post <- object$n.post * object$n.chains
       X <- object$X
-      # TODO: this needs to be cleaned up substantially. 
-      if (object$dist %in% c('Gaussian')) {
+      # TODO: this needs to be cleaned up substantially. spAbundGaussian needs to be updated
+      #       to allow multiple reps.  
+      if (object$dist %in% c('Gaussian') & is(object, 'spAbund')) {
         p.abund <- dim(X)[2]
       } else {
         p.abund <- dim(X)[3]

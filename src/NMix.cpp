@@ -345,45 +345,45 @@ extern "C" {
         // Proposal
         for (k = 0; k < pAbund; k++) {
           logPostBetaCand = 0.0;
-	  logPostBetaCurr = 0.0;
+          logPostBetaCurr = 0.0;
           betaCand[k] = rnorm(beta[k], exp(tuning[betaAMCMCIndx + k]));
           for (i = 0; i < pAbund; i++) {
             logPostBetaCand += dnorm(betaCand[i], muBeta[i], sqrt(SigmaBeta[i * pAbund + i]), 1);
-	    logPostBetaCurr += dnorm(beta[i], muBeta[i], sqrt(SigmaBeta[i * pAbund + i]), 1);
+            logPostBetaCurr += dnorm(beta[i], muBeta[i], sqrt(SigmaBeta[i * pAbund + i]), 1);
           }
           for (j = 0; j < J; j++) {
             tmp_J[j] = exp(F77_NAME(ddot)(&pAbund, &X[j], &J, betaCand, &inc) + betaStarSites[j]);
-	    if (family == 1) {
+            if (family == 1) {
               logPostBetaCand += nb_logpost(kappa, N[j], tmp_J[j], offset[j]);
-	    } else {
+            } else {
               logPostBetaCand += poisson_logpost(N[j], tmp_J[j], offset[j]);
-	    }
+            }
             tmp_J[j] = exp(F77_NAME(ddot)(&pAbund, &X[j], &J, beta, &inc) + betaStarSites[j]);
-	    if (family == 1) {
+            if (family == 1) {
               logPostBetaCurr += nb_logpost(kappa, N[j], tmp_J[j], offset[j]);
-	    } else {
+            } else {
               logPostBetaCurr += poisson_logpost(N[j], tmp_J[j], offset[j]);
-	    }
+            }
           }
           if (runif(0.0, 1.0) <= exp(logPostBetaCand - logPostBetaCurr)) {
             beta[k] = betaCand[k];
             accept[betaAMCMCIndx + k]++;
           } else {
             betaCand[k] = beta[k];
-	  }
+          }
         }
 
-	/********************************************************************
+        /********************************************************************
          *Update Detection Regression Coefficients
          *******************************************************************/
         // Proposal
         for (k = 0; k < pDet; k++) {
           logPostAlphaCand = 0.0;
-	  logPostAlphaCurr = 0.0;
+          logPostAlphaCurr = 0.0;
           alphaCand[k] = rnorm(alpha[k], exp(tuning[alphaAMCMCIndx + k]));
           for (i = 0; i < pDet; i++) {
             logPostAlphaCand += dnorm(alphaCand[i], muAlpha[i], sqrt(SigmaAlpha[i * pDet + i]), 1);
-	    logPostAlphaCurr += dnorm(alpha[i], muAlpha[i], sqrt(SigmaAlpha[i * pDet + i]), 1);
+            logPostAlphaCurr += dnorm(alpha[i], muAlpha[i], sqrt(SigmaAlpha[i * pDet + i]), 1);
           }
           for (i = 0; i < nObs; i++) {
             if (N[NLongIndx[i]] > 0.0) {
@@ -393,14 +393,14 @@ extern "C" {
               tmp_nObs[i] = logitInv(F77_NAME(ddot)(&pDet, &Xp[i], &nObs, alpha, &inc) +
 			             alphaStarObs[i], zero, one);
               logPostAlphaCurr += dbinom(y[i], N[NLongIndx[i]], tmp_nObs[i], 1);
-	    }
+            }
           }
           if (runif(0.0, 1.0) <= exp(logPostAlphaCand - logPostAlphaCurr)) {
             alpha[k] = alphaCand[k];
             accept[alphaAMCMCIndx + k]++;
           } else {
             alphaCand[k] = alpha[k];
-	  }
+            }
         }
 
         /********************************************************************
@@ -426,53 +426,50 @@ extern "C" {
          *******************************************************************/
         if (pAbundRE > 0) {
           for (l = 0; l < nAbundRE; l++) {
-	    betaStarCand[l] = rnorm(betaStar[l], exp(tuning[betaStarAMCMCIndx + l]));
-            logPostBetaStarCand[l] = dnorm(betaStarCand[l], 0.0,
-			                   sqrt(sigmaSqMu[betaStarIndx[l]]), 1);
+            betaStarCand[l] = rnorm(betaStar[l], exp(tuning[betaStarAMCMCIndx + l]));
+            logPostBetaStarCand[l] = dnorm(betaStarCand[l], 0.0, 
+                                           sqrt(sigmaSqMu[betaStarIndx[l]]), 1);
             logPostBetaStarCurr[l] = dnorm(betaStar[l], 0.0,
-			                   sqrt(sigmaSqMu[betaStarIndx[l]]), 1);
-	    for (j = 0; j < J; j++) {
+                                           sqrt(sigmaSqMu[betaStarIndx[l]]), 1);
+            for (j = 0; j < J; j++) {
               if (XRE[betaStarIndx[l] * J + j] == betaLevelIndx[l]) {
                 // Candidate
                 betaStarSitesCand[j] = 0.0;
                 for (ll = 0; ll < pAbundRE; ll++) {
                   betaStarSitesCand[j] += betaStarCand[which(XRE[ll * J + j],
-				                         betaLevelIndx, nAbundRE)] *
-	                              XRandom[ll * J + j];
+                                                             betaLevelIndx, nAbundRE)] *
+                                          XRandom[ll * J + j];
                 }
-                tmp_J[j] = exp(F77_NAME(ddot)(&pAbund, &X[j], &J, beta, &inc) +
-				  betaStarSitesCand[j]);
+                tmp_J[j] = exp(F77_NAME(ddot)(&pAbund, &X[j], &J, beta, &inc) + betaStarSitesCand[j]);
                 if (family == 1) {
-		  logPostBetaStarCand[l] += nb_logpost(kappa, N[j], tmp_J[j], offset[j]);
-		} else {
-		  logPostBetaStarCand[l] += poisson_logpost(N[j], tmp_J[j], offset[j]);
-		}
-		// Current
+                  logPostBetaStarCand[l] += nb_logpost(kappa, N[j], tmp_J[j], offset[j]);
+                } else {
+                  logPostBetaStarCand[l] += poisson_logpost(N[j], tmp_J[j], offset[j]);
+                }
+                // Current
                 betaStarSites[j] = 0.0;
                 for (ll = 0; ll < pAbundRE; ll++) {
-                  betaStarSites[j] += betaStar[which(XRE[ll * J + j],
-				               betaLevelIndx, nAbundRE)] *
-	                              XRandom[ll * J + j];
+                  betaStarSites[j] += betaStar[which(XRE[ll * J + j], betaLevelIndx, nAbundRE)] *
+                                      XRandom[ll * J + j];
                 }
-                tmp_J[j] = exp(F77_NAME(ddot)(&pAbund, &X[j], &J, beta, &inc) +
-				  betaStarSites[j]);
+                tmp_J[j] = exp(F77_NAME(ddot)(&pAbund, &X[j], &J, beta, &inc) + betaStarSites[j]);
                 if (family == 1) {
-		  logPostBetaStarCurr[l] += nb_logpost(kappa, N[j], tmp_J[j], offset[j]);
-		} else {
-		  logPostBetaStarCurr[l] += poisson_logpost(N[j], tmp_J[j], offset[j]);
-		}
-	      }
-	    }
-	    if (runif (0.0, 1.0) <= exp(logPostBetaStarCand[l] - logPostBetaStarCurr[l])) {
-              betaStar[l] = betaStarCand[l];
-	      F77_NAME(dcopy)(&J, betaStarSitesCand, &inc, betaStarSites, &inc);
-	      accept[betaStarAMCMCIndx + l]++;
-	    } else {
-              betaStarCand[l] = betaStar[l];
-	      F77_NAME(dcopy)(&J, betaStarSites, &inc, betaStarSitesCand, &inc);
-	    }
-	  }
-	}
+                  logPostBetaStarCurr[l] += nb_logpost(kappa, N[j], tmp_J[j], offset[j]);
+                } else {
+                  logPostBetaStarCurr[l] += poisson_logpost(N[j], tmp_J[j], offset[j]);
+                }
+              }
+            }
+          if (runif (0.0, 1.0) <= exp(logPostBetaStarCand[l] - logPostBetaStarCurr[l])) {
+            betaStar[l] = betaStarCand[l];
+            F77_NAME(dcopy)(&J, betaStarSitesCand, &inc, betaStarSites, &inc);
+            accept[betaStarAMCMCIndx + l]++;
+          } else {
+            betaStarCand[l] = betaStar[l];
+            F77_NAME(dcopy)(&J, betaStarSites, &inc, betaStarSitesCand, &inc);
+          }
+        }
+      }
 
         /********************************************************************
          *Update detection random effects

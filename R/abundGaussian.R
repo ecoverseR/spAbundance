@@ -34,20 +34,24 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
 
   # Some initial checks -------------------------------------------------
   if (missing(data)) {
-    stop("error: data must be specified")
+    stop("data must be specified")
   }
   if (!is.list(data)) {
-    stop("error: data must be a list")
+    stop("data must be a list")
   }
   names(data) <- tolower(names(data))
   if (missing(formula)) {
-    stop("error: formula must be specified")
+    stop("formula must be specified")
   }
   if (!'y' %in% names(data)) {
-    stop("error: detection-nondetection data y must be specified in data")
+    stop("detection-nondetection data y must be specified in data")
   }
   y <- as.matrix(data$y)
   y.mat <- y
+  # Error if zi-Gaussian is attempted to be fit with multiple replicates
+  if (family == "zi-Gaussian" & ncol(y.mat) > 1) {
+    stop("family = 'zi-Gaussian' does not currently allow fitting models with multiple replicates.")
+  }
   if (!'covs' %in% names(data)) {
     if (formula == ~ 1) {
       if (verbose) {
@@ -55,14 +59,16 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
       }
       data$covs <- list(int = array(1, dim = dim(y)))
     } else {
-      stop("error: covs must be specified in data for a model with covariates")
+      stop("covs must be specified in data for a model with covariates")
     }
   }
+  # TODO: abundGaussian() seems to fail when the covariates are not supplied as a list. Let's 
+  #       try to figure out what's going on here. 
   if (!is.list(data$covs)) {
     if (is.matrix(data$covs)) {
       data$covs <- data.frame(data$covs)
     } else {
-      stop("error: covs must be a list, data frame, or matrix")
+      stop("covs must be a list, data frame, or matrix")
     }
   }
   # Give warning if an offset is specified
@@ -79,7 +85,7 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
     if (!'z' %in% names(data)) {
       stop("z must be specified in data for a two stage model")
     }
-    z <- data$z
+    z <- as.matrix(data$z)
   } else {
     z <- matrix(1, nrow = nrow(y), ncol = ncol(y))
   }
@@ -100,9 +106,6 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   J.est <- sum(z.site.indx)
   J.zero <- sum(!z.site.indx)
 
-  # TODO: need to confirm the following two chunks work properly for 
-  #       family = 'ZI-Gaussian' 
-  
   # Set observations in y and covs to NA if not passing the hurdle
   y <- ifelse(z.indx, y, NA)
   for (i in 1:length(data$covs)) {
@@ -140,12 +143,12 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   # y -------------------------------
   y.na.test <- apply(y, 1, function(a) sum(!is.na(a)))
   if (sum(y.na.test == 0) > 0) {
-    stop("error: some sites in y have all missing detection histories. Remove these sites from all objects in the 'data' argument, then use 'predict' to obtain predictions at these locations if desired.")
+    stop("some sites in y have all missing detection histories. Remove these sites from all objects in the 'data' argument, then use 'predict' to obtain predictions at these locations if desired.")
   }
   # covs ------------------------------
   for (i in 1:ncol(data$covs)) {
     if (sum(is.na(data$covs[, i])) > sum(is.na(y))) {
-      stop("error: some elements in covs have missing values where there is an observed data value in y. Please either replace the NA values in covs with non-missing values (e.g., mean imputation) or set the corresponding values in y to NA where the covariate is missing.")
+      stop("some elements in covs have missing values where there is an observed data value in y. Please either replace the NA values in covs with non-missing values (e.g., mean imputation) or set the corresponding values in y to NA where the covariate is missing.")
     }
   }
   # Misalignment between y and covs
@@ -197,7 +200,7 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
     X.random <- as.matrix(tmp[[5]])
     x.random.names <- colnames(X.random)
   } else {
-    stop("error: formula is misspecified")
+    stop("formula is misspecified")
   }
   # Get RE level names
   re.level.names <- lapply(data$covs[, x.re.names, drop = FALSE],
@@ -221,17 +224,17 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   # Because I like K better than n.rep
   K <- n.rep
   if (missing(n.batch)) {
-    stop("error: must specify number of MCMC batches")
+    stop("must specify number of MCMC batches")
   }
   if (missing(batch.length)) {
-    stop("error: must specify length of each MCMC batch")
+    stop("must specify length of each MCMC batch")
   }
   n.samples <- n.batch * batch.length
   if (n.burn > n.samples) {
-    stop("error: n.burn must be less than n.samples")
+    stop("n.burn must be less than n.samples")
   }
   if (n.thin > n.samples) {
-    stop("error: n.thin must be less than n.samples")
+    stop("n.thin must be less than n.samples")
   }
   # Check if n.burn, n.thin, and n.samples result in an integer and error if otherwise.
   if (((n.samples - n.burn) / n.thin) %% 1 != 0) {
@@ -279,7 +282,7 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   # beta -----------------------
   if ("beta.normal" %in% names(priors)) {
     if (!is.list(priors$beta.normal) | length(priors$beta.normal) != 2) {
-      stop("error: beta.normal must be a list of length 2")
+      stop("beta.normal must be a list of length 2")
     }
     mu.beta <- priors$beta.normal[[1]]
     sigma.beta <- priors$beta.normal[[2]]
@@ -319,7 +322,7 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   # tau.sq.t ----------------------
   if ("tau.sq.ig" %in% names(priors)) {
     if (!is.vector(priors$tau.sq.ig) | !is.atomic(priors$tau.sq.ig) | length(priors$tau.sq.ig) != 2) {
-      stop("error: tau.sq.ig must be a vector of length 2 with elements corresponding to tau.sq's shape and scale parameters")
+      stop("tau.sq.ig must be a vector of length 2 with elements corresponding to tau.sq's shape and scale parameters")
     }
     tau.sq.a <- priors$tau.sq.ig[1]
     tau.sq.b <- priors$tau.sq.ig[2]
@@ -335,7 +338,7 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   if (p.re > 0) {
     if ("sigma.sq.mu.ig" %in% names(priors)) {
       if (!is.list(priors$sigma.sq.mu.ig) | length(priors$sigma.sq.mu.ig) != 2) {
-        stop("error: sigma.sq.mu.ig must be a list of length 2")
+        stop("sigma.sq.mu.ig must be a list of length 2")
       }
       sigma.sq.mu.a <- priors$sigma.sq.mu.ig[[1]]
       sigma.sq.mu.b <- priors$sigma.sq.mu.ig[[2]]
@@ -406,7 +409,7 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
   if ("tau.sq" %in% names(inits)) {
     tau.sq.inits <- inits[["tau.sq"]]
     if (length(tau.sq.inits) != 1) {
-      stop("error: initial values for tau.sq must be of length 1")
+      stop("initial values for tau.sq must be of length 1")
     }
   } else {
     tau.sq.inits <- runif(1, 0.5, 10)
@@ -591,19 +594,16 @@ abundGaussian <- function(formula, data, inits, priors, tuning, n.batch,
       }
       out$like.samples <- tmp
     } else {
-      # TODO: this needs to be updated to deal with multiple reps. Also make
-      #       sure that mu is included in here since you took it out of 
-      #       elsewhere. 
       y.rep.samples <- mcmc(do.call(rbind, lapply(out.tmp, function(a) t(a$y.rep.samples))))
       y.rep.zero.samples <- mcmc(do.call(rbind, lapply(out.tmp, function(a) t(a$y.rep.zero.samples))))
       out$y.rep.samples <- matrix(NA, n.post.samples * n.chains, J.est + J.zero)
-      out$y.rep.samples[, z.indx] <- y.rep.samples
-      out$y.rep.samples[, -z.indx] <- y.rep.zero.samples
+      out$y.rep.samples[, as.vector(z.indx)] <- y.rep.samples
+      out$y.rep.samples[, as.vector(!z.indx)] <- y.rep.zero.samples
       out$y.rep.samples <- mcmc(out$y.rep.samples)
       out$like.samples <- mcmc(do.call(rbind, lapply(out.tmp, function(a) t(a$like.samples))))
+      out$mu.samples <- mcmc(do.call(rbind, lapply(out.tmp, function(a) t(a$mu.samples))))
+      out$mu.samples <- mcmc(out$mu.samples)
     }
-    out$mu.samples <- mcmc(do.call(rbind, lapply(out.tmp, function(a) t(a$mu.samples))))
-    out$mu.samples <- mcmc(out$mu.samples)
   }
   out$X <- array(NA, dim = c(J, ncol(y.mat), p))
   out$X.re <- array(NA, dim = c(J, ncol(y.mat), p.re))
